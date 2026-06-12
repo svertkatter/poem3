@@ -1,0 +1,5 @@
+# APIキーを含む設定はコミットしない
+supabase-config.js
+
+node_modules/
+dist/

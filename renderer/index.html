@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>あんずよ — 詩の読みをさがす</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header id="topbar">
+  <div class="title">
+    <h1>あんずよ</h1>
+    <p>室生犀星『抒情小曲集』より「小景異情　その六」</p>
+  </div>
+  <div class="top-actions">
+    <button id="btn-original" class="chip" title="もとの詩を見る">原文</button>
+    <button id="btn-voice" class="chip" title="読む声をえらぶ">こえ：…</button>
+    <button id="btn-help" class="chip round" title="あそびかた">？</button>
+  </div>
+</header>
+
+<main id="stage"></main>
+
+<footer id="bottombar">
+  <button id="btn-reset" class="btn">もとにもどす</button>
+  <button id="btn-play" class="btn primary"><span class="play-icon">▶</span><span id="play-label">よむ</span></button>
+  <button id="btn-save" class="btn">この読みをのこす</button>
+  <button id="btn-library" class="btn">みんなの読み</button>
+</footer>
+
+<!-- 扉 — 原文（縦書き）。起動時のアトラクト画面を兼ねる -->
+<div id="intro-overlay" class="overlay intro hidden">
+  <div class="intro-blossom"></div>
+  <div class="intro-wrap">
+    <p class="intro-line">あんずよ</p>
+    <p class="intro-line">花着け</p>
+    <p class="intro-line">地ぞ早やに輝やけ</p>
+    <p class="intro-line">あんずよ花着け</p>
+    <p class="intro-line">あんずよ燃えよ</p>
+    <p class="intro-line">ああ　あんずよ花着け</p>
+    <p class="intro-title">小景異情　その六<span class="intro-author">室生犀星『抒情小曲集』より</span></p>
+  </div>
+  <p class="intro-hint" id="intro-hint">— ふれて、読みをさがしはじめる —</p>
+</div>
+
+<!-- VOICEVOX 接続待ちオーバーレイ -->
+<div id="connect-overlay" class="overlay hidden">
+  <div class="panel narrow">
+    <div class="pulse-dot"></div>
+    <h2>声をさがしています</h2>
+    <p>VOICEVOX を起動してください。<br>起動するとそのまま始まります。</p>
+  </div>
+</div>
+
+<!-- あそびかた -->
+<div id="help-overlay" class="overlay hidden">
+  <div class="panel">
+    <h2>詩に、正解の読みはありません。</h2>
+    <p class="lead">文字にふれて、自分の「読み」をさがしてください。</p>
+    <div class="help-grid">
+      <div class="help-item">
+        <svg viewBox="0 0 80 80"><text x="40" y="46" class="hg-char">は</text><path class="hg-arrow" d="M40 14 l-5 7 h10 z M40 66 l-5 -7 h10 z"/><line class="hg-line" x1="40" y1="18" x2="40" y2="26"/><line class="hg-line" x1="40" y1="54" x2="40" y2="62"/></svg>
+        <h3>上下にうごかす</h3><p>こえの<b>高さ</b>が変わる</p>
+      </div>
+      <div class="help-item">
+        <svg viewBox="0 0 80 80"><text x="40" y="46" class="hg-char">は</text><path class="hg-arrow" d="M12 40 l7 -5 v10 z M68 40 l-7 -5 v10 z"/><line class="hg-line" x1="16" y1="40" x2="24" y2="40"/><line class="hg-line" x1="56" y1="40" x2="64" y2="40"/></svg>
+        <h3>左右にのばす</h3><p>こえの<b>ながさ・テンポ</b>が変わる</p>
+      </div>
+      <div class="help-item">
+        <svg viewBox="0 0 80 80"><text x="40" y="46" class="hg-char">は</text><circle class="hg-dot" cx="18" cy="62" r="5"/><circle class="hg-dot" cx="62" cy="18" r="5"/><path class="hg-arrow" d="M10 70 l2 -9 7 7 z M70 10 l-9 2 7 7 z"/></svg>
+        <h3>二本の指でひらく</h3><p>こえの<b>つよさ</b>が変わる</p>
+      </div>
+      <div class="help-item">
+        <svg viewBox="0 0 80 80"><text x="40" y="28" class="hg-char small">はなつけ</text><text x="40" y="72" class="hg-char small">あんずよ</text><path class="hg-arrow" d="M40 34 l-4 6 h8 z M40 58 l-4 -6 h8 z"/></svg>
+        <h3>行のあいだをうごかす</h3><p>ことばの<b>間（ま）</b>が変わる</p>
+      </div>
+    </div>
+    <p class="note">声は文字のかたちにもあらわれます。二回つづけてタップすると、もとにもどります。<br>できあがった読みは「のこす」と、ここに来た誰かや、とおくの誰かが聞けます。</p>
+    <button class="btn primary" id="btn-help-close">はじめる</button>
+  </div>
+</div>
+
+<!-- 名前をえらんでのこす -->
+<div id="save-overlay" class="overlay hidden">
+  <div class="panel">
+    <h2>この読みに、名前をえらぶ</h2>
+    <p class="lead">名前から、花のいろがきまります。</p>
+    <div id="name-candidates"></div>
+    <div class="modal-actions">
+      <button id="btn-shuffle" class="btn">⟳ ほかの名前</button>
+      <button id="btn-save-cancel" class="btn">やめる</button>
+    </div>
+    <div id="save-progress" class="save-progress hidden">
+      <div class="pulse-dot small"></div><span id="save-progress-text">こえをとどけています…</span>
+    </div>
+  </div>
+</div>
+
+<!-- QR — 読みをもちかえる -->
+<div id="qr-overlay" class="overlay hidden">
+  <div class="panel narrow">
+    <h2 id="qr-title">のこしました</h2>
+    <div id="qr-flower"></div>
+    <div id="qr-box"></div>
+    <p>スマートフォンでこのコードを読むと、<br>いつでも、どこでも、この読みが聞けます。</p>
+    <div class="modal-actions">
+      <button id="btn-qr-close" class="btn primary">とじる</button>
+    </div>
+  </div>
+</div>
+
+<!-- みんなの読み — 全画面の「読みの林」 -->
+<div id="library-overlay" class="overlay page hidden">
+  <div class="page-head">
+    <button id="btn-library-close" class="btn">← 詩にもどる</button>
+    <div class="page-title">
+      <h2>みんなの読み</h2>
+      <p id="library-sub">読みは、人の数だけ。</p>
+    </div>
+    <span class="page-head-spacer"></span>
+  </div>
+  <div id="library-scroll">
+    <div id="library-list"></div>
+  </div>
+</div>
+
+<!-- 読む声をえらぶ -->
+<div id="voice-overlay" class="overlay hidden">
+  <div class="panel narrow">
+    <h2>読む声をえらぶ</h2>
+    <div id="voice-list"></div>
+    <div class="modal-actions">
+      <button id="btn-voice-close" class="btn">とじる</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="hidden"></div>
+
+<script src="lib/p5.min.js"></script>
+<script src="lib/qrcode.js"></script>
+<script src="sketch.js"></script>
+</body>
+</html>

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>あんずよ — 詩の読みをさがす</title>
+<meta property="og:title" content="あんずよ — 詩の読みをさがす">
+<meta property="og:description" content="室生犀星「小景異情 その六」。詩に、正解の読みはありません。これは、誰かがさがした読みです。">
+<style>
+/* ============================================================
+   あんずよ — 読みの共有ページ
+   展示でのこされた「読み」を、いつでもどこでも開くための紙。
+   API キーは使わない（公開ストレージの JSON と WAV だけで動く）
+   ============================================================ */
+:root {
+  --paper: #f7f2e8;
+  --ink: #2e2a24;
+  --ink-soft: #7a7164;
+  --line: #d8ccb6;
+  --anzu: #e08542;
+  --anzu-deep: #c96a28;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  font-family: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  color: var(--ink);
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(255,252,244,0.92), rgba(255,252,244,0) 60%),
+    radial-gradient(90% 60% at 85% 100%, rgba(240,200,160,0.20), rgba(240,200,160,0) 55%),
+    var(--paper);
+  min-height: 100vh;
+}
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 40px 22px 70px;
+  text-align: center;
+}
+header h1 { font-size: 21px; letter-spacing: 0.4em; font-weight: 600; }
+header p { font-size: 12px; letter-spacing: 0.14em; color: var(--ink-soft); margin-top: 8px; }
+
+.flower { width: 96px; height: 96px; margin: 30px auto 6px; }
+.flower.playing svg { animation: sway 1.8s ease-in-out infinite; }
+@keyframes sway {
+  0%, 100% { transform: rotate(-6deg) scale(1.03); }
+  50% { transform: rotate(6deg) scale(1.08); }
+}
+.flower svg { width: 100%; height: 100%; }
+
+.yomi-name { font-size: 30px; letter-spacing: 0.12em; margin-top: 6px; }
+.yomi-meta { font-size: 13px; color: var(--ink-soft); letter-spacing: 0.1em; margin-top: 10px; }
+
+.poem-box { margin: 34px auto 8px; }
+.poem-box svg { width: 100%; height: auto; }
+.poem-box text {
+  font-family: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+}
+
+.play-btn {
+  font-family: inherit;
+  display: inline-flex; align-items: center; justify-content: center; gap: 12px;
+  font-size: 19px; letter-spacing: 0.22em;
+  color: #fffaf2;
+  background: linear-gradient(160deg, var(--anzu), var(--anzu-deep));
+  border: none; border-radius: 999px;
+  padding: 18px 52px;
+  margin-top: 26px;
+  box-shadow: 0 4px 16px rgba(62,48,28,0.25);
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.play-btn:active { transform: scale(0.96); }
+.play-btn[disabled] { opacity: 0.5; pointer-events: none; }
+
+.about {
+  margin-top: 46px;
+  font-size: 13.5px; line-height: 2.2; letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+.about b { color: var(--anzu-deep); font-weight: 600; }
+.status { margin-top: 50px; font-size: 15px; color: var(--ink-soft); letter-spacing: 0.12em; line-height: 2.2; }
+footer { margin-top: 60px; font-size: 11.5px; color: var(--ink-soft); letter-spacing: 0.12em; line-height: 2; }
+.hidden { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>あんずよ</h1>
+    <p>室生犀星『抒情小曲集』より「小景異情　その六」</p>
+  </header>
+
+  <div id="status" class="status">読みをひらいています…</div>
+
+  <section id="yomi" class="hidden">
+    <div id="flower" class="flower"></div>
+    <div id="yomi-name" class="yomi-name"></div>
+    <div id="yomi-meta" class="yomi-meta"></div>
+    <div id="poem" class="poem-box"></div>
+    <button id="play" class="play-btn"><span id="play-icon">▶</span><span id="play-label">この読みをきく</span></button>
+    <p class="about">
+      詩には、俳句や短歌のような決まったリズムがありません。<br>
+      どう読んでもいい。だから、わからなくなる。<br>
+      これは、誰かが文字をうごかして、なんども聞きながら、<br>
+      ようやく<b>しっくりきた「読み」</b>のかたちです。<br>
+      文字の高さは声の高さ、文字の伸びは声の伸び。
+    </p>
+  </section>
+
+  <footer>
+    詩に、正解の読みはありません。読みは、人の数だけあります。<br>
+    展示「あんずよ — 詩の読みをさがす」
+  </footer>
+</main>
+
+<script>
+'use strict';
+
+// 公開ストレージ（読み出しにキーは不要）
+const STORAGE = 'https://igtbhusmfsambsoozuef.supabase.co/storage/v1/object/public/readings/';
+
+const MOODS = {
+  shizuka: { pale: '#eef2f5', main: '#8fa3b8', deep: '#5d7185' },
+  attaka:  { pale: '#fdf0e3', main: '#e8a06b', deep: '#c97a3d' },
+  moeru:   { pale: '#fbe9e2', main: '#d4502e', deep: '#a33518' },
+  hazumu:  { pale: '#f3f5e3', main: '#a8b545', deep: '#76842b' },
+  tooi:    { pale: '#f0eef7', main: '#9b8fc0', deep: '#6f6395' },
+  massugu: { pale: '#e9f2ef', main: '#69997f', deep: '#41705c' }
+};
+const VOICE_LABEL = { feminine: '女性的', neutral: '中性的', masculine: '男性的' };
+
+// 操作面と同じ、ひらがなの詩（1文字=1モーラ。'　'は空白）
+const POEM = ['あんずよ', 'はなつけ', 'ちぞはやにかがやけ', 'あんずよはなつけ', 'あんずよもえよ', 'ああ　あんずよはなつけ'];
+
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const $ = (id) => document.getElementById(id);
+
+// ---- 花（展示アプリと同じ生成規則） ----
+function flowerSVG(moodId, data) {
+  const mood = MOODS[moodId] || MOODS.attaka;
+  const flat = data ? data.chars.flat() : [];
+  const pitches = flat.length ? flat.map(v => v[0]) : [0, 0, 0, 0, 0];
+  const vols = flat.length ? flat.map(v => v[2]) : [1];
+  const avgVol = vols.reduce((a, b) => a + b, 0) / vols.length;
+  const petals = [];
+  for (let k = 0; k < 5; k++) {
+    const i0 = Math.floor(k * pitches.length / 5);
+    const i1 = Math.max(i0 + 1, Math.floor((k + 1) * pitches.length / 5));
+    const seg = pitches.slice(i0, i1);
+    const avg = seg.reduce((a, b) => a + b, 0) / seg.length;
+    const lenN = (clamp(avg, -1.2, 1.2) + 1.2) / 2.4;
+    const rx = 9 + 4 * clamp(avgVol, 0.45, 2.2) / 2.2 * 2;
+    const ry = 15 + 13 * (0.35 + 0.65 * lenN);
+    const ang = -90 + k * 72 + (lenN - 0.5) * 14;
+    petals.push(`<g transform="rotate(${ang.toFixed(1)})">
+      <ellipse cx="0" cy="${(-12 - ry * 0.55).toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" fill="${mood.main}" opacity="0.92"/>
+      <ellipse cx="0" cy="${(-12 - ry * 0.42).toFixed(1)}" rx="${(rx * 0.45).toFixed(1)}" ry="${(ry * 0.55).toFixed(1)}" fill="${mood.pale}" opacity="0.55"/>
+    </g>`);
+  }
+  return `<svg viewBox="-50 -50 100 100" xmlns="http://www.w3.org/2000/svg">
+    <g>${petals.join('')}</g>
+    <circle cx="0" cy="0" r="9.5" fill="${mood.deep}"/>
+    <circle cx="0" cy="0" r="3.4" fill="${mood.pale}" opacity="0.8"/>
+  </svg>`;
+}
+
+// ---- 詩を「その人の読みのかたち」のまま描く ----
+const BASE = 40, SLOT = BASE * 1.18, LINE_SPACE = BASE * 1.85, GAP_PX = 44, PITCH_PX = 56;
+const sizeFactor = (vol) => 0.62 + 0.38 * vol;
+
+function renderPoemSVG(data) {
+  const lines = POEM.map((text, li) => ({
+    chars: [...text].map((ch, ci) => {
+      const space = ch === '　' || ch === ' ';
+      const v = (data && data.chars[li] && data.chars[li][ci]) || [0, 1, 1];
+      return { ch, space, pitch: v[0], dur: v[1], vol: v[2] };
+    }),
+    gapAfter: (data && data.gaps && data.gaps[li] !== undefined) ? data.gaps[li] : 0.8
+  }));
+
+  let y = 0, maxW = 0;
+  const linePos = lines.map((line, li) => {
+    let x = 0;
+    const cps = line.chars.map(c => {
+      const w = SLOT * (c.space ? 0.55 : c.dur);
+      const cp = { cx: x + w / 2 };
+      x += w;
+      return cp;
+    });
+    const pos = { y, lineW: x, cps };
+    maxW = Math.max(maxW, x);
+    if (li < lines.length - 1) y += LINE_SPACE + line.gapAfter * GAP_PX;
+    return pos;
+  });
+
+  const margin = BASE * 1.4;
+  const W = maxW + margin * 2;
+  const H = y + margin * 2.1;
+  const els = [];
+  lines.forEach((line, li) => {
+    const lp = linePos[li];
+    const x0 = (W - lp.lineW) / 2;
+    const baseY = margin + lp.y;
+    els.push(`<line x1="${(x0 - 10).toFixed(1)}" y1="${baseY.toFixed(1)}" x2="${(x0 + lp.lineW + 10).toFixed(1)}" y2="${baseY.toFixed(1)}" stroke="#7a7164" stroke-opacity="0.22" stroke-dasharray="2 7"/>`);
+    line.chars.forEach((c, ci) => {
+      if (c.space) return;
+      const cx = x0 + lp.cps[ci].cx;
+      const cy = baseY - c.pitch * PITCH_PX;
+      const dy = baseY - cy;
+      if (Math.abs(dy) > 5) {
+        els.push(`<line x1="${cx.toFixed(1)}" y1="${baseY.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${(cy + Math.sign(dy) * BASE * 0.42).toFixed(1)}" stroke="#e08542" stroke-opacity="0.4" stroke-width="1.1"/>
+          <circle cx="${cx.toFixed(1)}" cy="${baseY.toFixed(1)}" r="2.6" fill="#e08542" fill-opacity="0.5"/>`);
+      }
+      const sx = 0.62 + 0.38 * c.dur;
+      const sy = 1 + c.pitch * 0.20;
+      const size = BASE * sizeFactor(c.vol);
+      els.push(`<text id="c-${li}-${ci}" transform="translate(${cx.toFixed(1)} ${cy.toFixed(1)}) scale(${sx.toFixed(3)} ${sy.toFixed(3)})" font-size="${size.toFixed(1)}" fill="#2e2a24" text-anchor="middle" dominant-baseline="central">${c.ch}</text>`);
+    });
+  });
+  return `<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" xmlns="http://www.w3.org/2000/svg">${els.join('')}</svg>`;
+}
+
+// ---- 再生（カラオケ式に文字が灯る） ----
+let audio = null, rafId = 0;
+function setupPlayer(meta) {
+  const btn = $('play'), icon = $('play-icon'), label = $('play-label');
+  const timing = meta.timing || [];
+  let activeEl = null;
+
+  function tick() {
+    if (!audio) return;
+    const t = audio.currentTime;
+    let found = null;
+    for (const [li, ci, t0, t1] of timing) {
+      if (t >= t0 && t < t1) { found = `c-${li}-${ci}`; break; }
+    }
+    if (activeEl && activeEl.id !== found) { activeEl.setAttribute('fill', '#2e2a24'); activeEl = null; }
+    if (found && (!activeEl || activeEl.id !== found)) {
+      const el = document.getElementById(found);
+      if (el) { el.setAttribute('fill', '#c96a28'); activeEl = el; }
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function stopUI() {
+    cancelAnimationFrame(rafId);
+    if (activeEl) { activeEl.setAttribute('fill', '#2e2a24'); activeEl = null; }
+    icon.textContent = '▶';
+    label.textContent = 'この読みをきく';
+    $('flower').classList.remove('playing');
+  }
+
+  btn.addEventListener('click', () => {
+    if (audio && !audio.paused) {
+      audio.pause(); audio.currentTime = 0;
+      stopUI();
+      return;
+    }
+    if (!audio) {
+      audio = new Audio(meta.wav);
+      audio.addEventListener('ended', stopUI);
+    }
+    audio.play().then(() => {
+      icon.textContent = '■';
+      label.textContent = 'とめる';
+      $('flower').classList.add('playing');
+      rafId = requestAnimationFrame(tick);
+    }).catch(() => { /* 再生できない環境では何もしない */ });
+  });
+}
+
+// ---- 起動 ----
+(async () => {
+  const status = $('status');
+  const id = new URLSearchParams(location.search).get('id') || '';
+  if (!/^[a-z0-9-]+$/.test(id)) {
+    // id なし → 作品の説明（展示で QR を読むとここに読みがひらく）
+    $('yomi').classList.remove('hidden');
+    $('flower').innerHTML = flowerSVG('attaka', null);
+    $('yomi-name').textContent = '詩の読みをさがす';
+    $('yomi-meta').textContent = '展示でのこされた読みの QR コードから、その人の読みがここにひらきます';
+    $('poem').innerHTML = renderPoemSVG(null);
+    $('play').classList.add('hidden');
+    status.classList.add('hidden');
+    return;
+  }
+  try {
+    const res = await fetch(STORAGE + id + '.json');
+    if (!res.ok) throw new Error('not found');
+    const meta = await res.json();
+    status.classList.add('hidden');
+    $('yomi').classList.remove('hidden');
+    $('flower').innerHTML = flowerSVG(meta.mood, meta.data);
+    $('yomi-name').textContent = `「${meta.name || 'ななしの読み'}」`;
+    const d = meta.savedAt ? new Date(meta.savedAt) : null;
+    $('yomi-meta').textContent = [
+      d ? `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日にのこされた読み` : '',
+      VOICE_LABEL[meta.voice] ? `こえ：${VOICE_LABEL[meta.voice]}` : ''
+    ].filter(Boolean).join('　');
+    $('poem').innerHTML = renderPoemSVG(meta.data);
+    setupPlayer(meta);
+  } catch (e) {
+    status.innerHTML = 'この読みは、見つかりませんでした。<br>風にとばされてしまったのかもしれません。';
+  }
+})();
+</script>
+</body>
+</html>

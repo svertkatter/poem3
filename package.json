@@ -1,0 +1,32 @@
+{
+  "name": "anzu-yo",
+  "productName": "AnzuYo",
+  "version": "1.0.0",
+  "description": "室生犀星「小景異情 その六」— 詩の読みをさがすインタラクティブ作品",
+  "author": "alice",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --dir",
+    "dist": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "jp.murou.anzuyo",
+    "productName": "AnzuYo",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**"
+    ],
+    "extraResources": [
+      "supabase-config.js"
+    ],
+    "win": {
+      "target": "portable"
+    }
+  }
+}
