@@ -41,14 +41,23 @@ const GAP_DEFAULT = 0.8;
 // ---------------- 見た目の定数 ----------------
 const BASE = 56;                 // 基準文字サイズ(px)
 const SLOT = BASE * 1.18;        // dur=1 のときの文字送り幅
-const LINE_SPACE = BASE * 1.85;  // 行の基本間隔
+const LINE_SPACE = BASE * 1.85;  // 行の基本間隔（やすらかな初期状態の見ため）
 const GAP_PX = 64;               // 行間 1秒 あたりのピクセル
 const PITCH_PX = 80;             // ピッチ 1.0 あたりのピクセル（行をまたぎにくい振幅に）
+const LINE_SAFETY = 14;          // 行どうしの最小すきま(px)。文字が重なって誤操作を招かないための保険
+
+// 文字のかたち＝声のかたち。値は大きいほど見ための変化が大げさになる
+const DUR_SX_BASE = 0.45, DUR_SX_RANGE = 0.55;   // ながさ → 横の伸び縮み
+const PITCH_SY_COEF = 0.34;                       // 高さ → 背伸び／ずんぐり
+const VOL_SIZE_BASE = 0.56, VOL_SIZE_RANGE = 0.52; // つよさ → 大きさ
+
+function durScaleX(dur) { return DUR_SX_BASE + DUR_SX_RANGE * dur; }
+function pitchScaleY(pitch) { return 1 + pitch * PITCH_SY_COEF; }
 
 const INK = [46, 42, 36];
 const INK_SOFT = [122, 113, 100];
-const ANZU = [224, 133, 66];
-const ANZU_DEEP = [201, 106, 40];
+const VOICE = [217, 123, 79];
+const VOICE_DEEP = [184, 95, 55];
 
 // ---------------- 声（3つの選択肢に絞る） ----------------
 const VOICES = [
@@ -140,26 +149,47 @@ function setup() {
 
 function windowResized() { resizeCanvas(windowWidth, windowHeight); }
 
-function sizeFactor(vol) { return 0.62 + 0.38 * vol; }
+function sizeFactor(vol) { return VOL_SIZE_BASE + VOL_SIZE_RANGE * vol; }
+
+// 文字1個ぶんの、基準線からの最大はみ出し半径（重なり判定に使う）
+function glyphHalfHeight(c) {
+  return BASE * sizeFactor(c.vol) * Math.abs(pitchScaleY(c.pitch)) * 0.5;
+}
 
 function computeLayout() {
-  const linePos = [];
-  let y = 0, maxW = 0;
-  for (let li = 0; li < lines.length; li++) {
-    const line = lines[li];
+  // 1パス目：各行の文字幅と、上下にどれだけはみ出しうるかを求める
+  const geom = lines.map(line => {
     let x = 0;
     const cps = [];
+    let downReach = 0, upReach = 0; // 基準線より下／上へのはみ出し量(px)
     for (const ch of line.chars) {
       const w = SLOT * (ch.space ? 0.55 : ch.dur);
       cps.push({ cx: x + w / 2, w });
       x += w;
+      if (!ch.space) {
+        const half = glyphHalfHeight(ch);
+        if (ch.pitch < 0) downReach = Math.max(downReach, -ch.pitch * PITCH_PX + half);
+        else upReach = Math.max(upReach, ch.pitch * PITCH_PX + half);
+      }
     }
-    linePos.push({ y, lineW: x, cps });
-    maxW = Math.max(maxW, x);
-    if (li < lines.length - 1) y += LINE_SPACE + line.gapAfter * GAP_PX;
+    return { lineW: x, cps, downReach, upReach };
+  });
+
+  // 2パス目：隣りあう行のはみ出しどうしが触れない間隔をとって y を積む
+  const linePos = [];
+  let y = 0, maxW = 0;
+  for (let li = 0; li < lines.length; li++) {
+    const g = geom[li];
+    linePos.push({ y, lineW: g.lineW, cps: g.cps });
+    maxW = Math.max(maxW, g.lineW);
+    if (li < lines.length - 1) {
+      const restGap = LINE_SPACE + lines[li].gapAfter * GAP_PX;
+      const safeGap = g.downReach + geom[li + 1].upReach + LINE_SAFETY;
+      y += Math.max(restGap, safeGap);
+    }
   }
   const totalH = y + BASE * 2.2;
-  const topPad = 104, bottomPad = 116;
+  const topPad = 104, bottomPad = 158; // 詩とボタン列のあいだの余白
   const availW = width - 110, availH = height - topPad - bottomPad;
   const s = Math.min(1, availW / maxW, availH / totalH);
   const ox = width / 2;
@@ -229,18 +259,18 @@ function draw() {
       // 基準線から離れた文字には、細い糸を垂らして高さを見せる
       const dy = lp.y - p.y;
       if (Math.abs(dy) > 7) {
-        stroke(ANZU[0], ANZU[1], ANZU[2], Math.min(110, lineAlpha));
+        stroke(VOICE[0], VOICE[1], VOICE[2], Math.min(110, lineAlpha));
         strokeWeight(1.2);
         lineSeg(p.x, lp.y, p.x, p.y + Math.sign(dy) * BASE * 0.42 * sizeFactor(c.vol));
         noStroke();
-        fill(ANZU[0], ANZU[1], ANZU[2], Math.min(150, lineAlpha));
+        fill(VOICE[0], VOICE[1], VOICE[2], Math.min(150, lineAlpha));
         circle(p.x, lp.y, 4);
       }
 
       // 文字のかたち＝声のかたち
       //   ながさ → 横に伸びる / 高さ → 背伸び・ずんぐり / つよさ → 大きさ
-      const sx = 0.62 + 0.38 * c.dur;          // 0.45→0.79, 1→1.0, 2.6→1.61
-      const sy = 1 + c.pitch * 0.20;           // 高い声は細く背が高く、低い声はひくくなる
+      const sx = durScaleX(c.dur);             // ながさ → 横の伸び縮み
+      const sy = pitchScaleY(c.pitch);         // 高い声は細く背が高く、低い声はひくくなる
       const size = BASE * sizeFactor(c.vol);
 
       push();
@@ -250,7 +280,7 @@ function draw() {
       if (isActive) {
         drawingContext.shadowColor = 'rgba(224,133,66,0.75)';
         drawingContext.shadowBlur = 26 * layout.s;
-        fill(ANZU_DEEP[0], ANZU_DEEP[1], ANZU_DEEP[2]);
+        fill(VOICE_DEEP[0], VOICE_DEEP[1], VOICE_DEEP[2]);
         textSize(size * 1.1);
       } else {
         drawingContext.shadowBlur = 0;
@@ -755,6 +785,34 @@ function flowerSVG(moodId, data, opts = {}) {
   </svg>`;
 }
 
+// ---- 木 — 「みんなの読み」画面の背景。墨で一筆書いたような枝ぶり ----
+// グリッドの後ろに敷くだけの装飾なので、操作の的（カード）には触れない
+function treeSVG() {
+  const branches = [
+    'M 120 760 C 110 560, 230 430, 210 230',
+    'M 210 230 C 195 150, 140 90, 70 40',
+    'M 210 230 C 230 140, 320 100, 410 70',
+    'M 210 230 C 250 270, 340 280, 430 250',
+    'M 150 470 C 60 430, -30 440, -90 400',
+    'M 170 360 C 260 350, 330 300, 380 230'
+  ];
+  const blossoms = [
+    [70, 40, 'echo'], [130, 70, 'voice'], [410, 70, 'voice'], [350, 110, 'echo'],
+    [430, 250, 'echo'], [370, 250, 'voice'], [-90, 400, 'echo'], [-40, 420, 'voice'],
+    [380, 230, 'voice'], [320, 210, 'echo']
+  ];
+  const dot = (x, y, kind) => {
+    const fill = kind === 'echo' ? 'var(--echo)' : 'var(--voice)';
+    return `<circle cx="${x}" cy="${y}" r="${5 + (Math.abs(x * y) % 5)}" fill="${fill}" opacity="0.5"/>`;
+  };
+  return `<svg viewBox="-150 0 600 800" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+    <g fill="none" stroke="var(--echo-deep)" stroke-width="2.2" stroke-linecap="round" opacity="0.35">
+      ${branches.map(d => `<path d="${d}"/>`).join('')}
+    </g>
+    <g>${blossoms.map(([x, y, k]) => dot(x, y, k)).join('')}</g>
+  </svg>`;
+}
+
 // ============================================================
 // UI — ボタン・モーダル・ライブラリ
 // ============================================================
@@ -848,7 +906,7 @@ async function doSave(name, mood) {
   $('name-candidates').style.pointerEvents = 'none';
 
   const entry = {
-    app: 'anzuyo', v: 2,
+    app: 'ecoar', poem: 'anzuyo', v: 2,
     name, mood,
     voice: voiceClass,
     speakerId: currentSpeakerId(),
@@ -923,7 +981,7 @@ async function openLibrary() {
       cloudOk = true;
       for (const row of res.rows) {
         const p = row.params || {};
-        if (p.app !== 'anzuyo' || p.v !== 2 || !p.data) continue;
+        if ((p.app !== 'ecoar' && p.app !== 'anzuyo') || p.v !== 2 || !p.data) continue;
         items.push({
           key: row.id, name: p.name || 'ななしの読み', mood: p.mood,
           voice: p.voice, data: p.data,
@@ -939,7 +997,7 @@ async function openLibrary() {
   try {
     const locals = await window.api.libraryList();
     for (const en of locals) {
-      if (en.app !== 'anzuyo' || en.v !== 2 || !en.data) continue;
+      if ((en.app !== 'ecoar' && en.app !== 'anzuyo') || en.v !== 2 || !en.data) continue;
       items.push({
         key: 'local-' + en.id, name: en.name || 'ななしの読み', mood: en.mood,
         voice: en.voice, data: en.data,
@@ -996,6 +1054,8 @@ async function openLibrary() {
 
 // ---- 初期化 ----
 function initUI() {
+  $('library-tree').innerHTML = treeSVG();
+
   $('btn-play').addEventListener('click', () => {
     if (playing) stopPlayback();
     else playAll();

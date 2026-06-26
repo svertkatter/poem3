@@ -1,8 +1,8 @@
 {
-  "name": "anzu-yo",
-  "productName": "AnzuYo",
+  "name": "ecoar",
+  "productName": "ecoar",
   "version": "1.0.0",
-  "description": "室生犀星「小景異情 その六」— 詩の読みをさがすインタラクティブ作品",
+  "description": "ecoar — 詩の読みをさがすインタラクティブ作品（いま読めるのは室生犀星「小景異情 その六」）",
   "author": "alice",
   "main": "main.js",
   "scripts": {
@@ -15,8 +15,8 @@
     "electron-builder": "^24.13.3"
   },
   "build": {
-    "appId": "jp.murou.anzuyo",
-    "productName": "AnzuYo",
+    "appId": "jp.murou.ecoar",
+    "productName": "ecoar",
     "files": [
       "main.js",
       "preload.js",

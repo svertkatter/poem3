@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>あんずよ — 詩の読みをさがす</title>
+<title>ecoar — あんずよ</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header id="topbar">
   <div class="title">
-    <h1>あんずよ</h1>
-    <p>室生犀星『抒情小曲集』より「小景異情　その六」</p>
+    <h1 class="brand-word">ecoar<span class="brand-ring">))</span></h1>
+    <p class="poem-title">あんずよ<span class="poem-source">室生犀星『抒情小曲集』より「小景異情　その六」</span></p>
   </div>
   <div class="top-actions">
     <button id="btn-original" class="chip" title="もとの詩を見る">原文</button>
@@ -112,6 +112,7 @@
 
 <!-- みんなの読み — 全画面の「読みの林」 -->
 <div id="library-overlay" class="overlay page hidden">
+  <div class="page-tree" id="library-tree"></div>
   <div class="page-head">
     <button id="btn-library-close" class="btn">← 詩にもどる</button>
     <div class="page-title">

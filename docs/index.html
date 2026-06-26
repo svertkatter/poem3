@@ -3,22 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>あんずよ — 詩の読みをさがす</title>
-<meta property="og:title" content="あんずよ — 詩の読みをさがす">
+<title>ecoar — あんずよ</title>
+<meta property="og:title" content="ecoar — あんずよ">
 <meta property="og:description" content="室生犀星「小景異情 その六」。詩に、正解の読みはありません。これは、誰かがさがした読みです。">
 <style>
 /* ============================================================
-   あんずよ — 読みの共有ページ
+   ecoar — 読みの共有ページ／みんなの読み
    展示でのこされた「読み」を、いつでもどこでも開くための紙。
-   API キーは使わない（公開ストレージの JSON と WAV だけで動く）
+   一覧の表示・見ためは展示アプリの「みんなの読み」と同じにする。
+   読み出しに API キーは要らない（publishable な anon キーのみ。RLSの範囲で select / 公開Storageの読み出しだけ）
    ============================================================ */
 :root {
   --paper: #f7f2e8;
   --ink: #2e2a24;
   --ink-soft: #7a7164;
   --line: #d8ccb6;
-  --anzu: #e08542;
-  --anzu-deep: #c96a28;
+  --voice: #d97b4f;
+  --voice-deep: #b85f37;
+  --voice-pale: #f5ddc9;
+  --echo: #5e8a86;
+  --echo-deep: #3f6864;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
@@ -26,18 +30,26 @@ html, body {
   color: var(--ink);
   background:
     radial-gradient(120% 70% at 50% 0%, rgba(255,252,244,0.92), rgba(255,252,244,0) 60%),
-    radial-gradient(90% 60% at 85% 100%, rgba(240,200,160,0.20), rgba(240,200,160,0) 55%),
+    radial-gradient(90% 60% at 85% 100%, rgba(217,123,79,0.16), rgba(217,123,79,0) 55%),
     var(--paper);
   min-height: 100vh;
+  position: relative;
 }
 main {
+  position: relative;
   max-width: 640px;
   margin: 0 auto;
   padding: 40px 22px 70px;
   text-align: center;
 }
-header h1 { font-size: 21px; letter-spacing: 0.4em; font-weight: 600; }
-header p { font-size: 12px; letter-spacing: 0.14em; color: var(--ink-soft); margin-top: 8px; }
+header .brand-word {
+  display: inline-flex; align-items: baseline; gap: 7px;
+  font-size: 22px; font-weight: 600; letter-spacing: 0.3em;
+  color: var(--echo-deep);
+}
+header .brand-ring { font-size: 12px; letter-spacing: 0; color: var(--echo); opacity: 0.75; }
+header .poem-title { margin-top: 8px; font-size: 15px; letter-spacing: 0.14em; color: var(--voice-deep); }
+header .poem-source { display: block; margin-top: 4px; font-size: 11.5px; letter-spacing: 0.1em; color: var(--ink-soft); }
 
 .flower { width: 96px; height: 96px; margin: 30px auto 6px; }
 .flower.playing svg { animation: sway 1.8s ease-in-out infinite; }
@@ -61,7 +73,7 @@ header p { font-size: 12px; letter-spacing: 0.14em; color: var(--ink-soft); marg
   display: inline-flex; align-items: center; justify-content: center; gap: 12px;
   font-size: 19px; letter-spacing: 0.22em;
   color: #fffaf2;
-  background: linear-gradient(160deg, var(--anzu), var(--anzu-deep));
+  background: linear-gradient(160deg, var(--voice), var(--voice-deep));
   border: none; border-radius: 999px;
   padding: 18px 52px;
   margin-top: 26px;
@@ -77,17 +89,111 @@ header p { font-size: 12px; letter-spacing: 0.14em; color: var(--ink-soft); marg
   font-size: 13.5px; line-height: 2.2; letter-spacing: 0.08em;
   color: var(--ink-soft);
 }
-.about b { color: var(--anzu-deep); font-weight: 600; }
+.about b { color: var(--voice-deep); font-weight: 600; }
 .status { margin-top: 50px; font-size: 15px; color: var(--ink-soft); letter-spacing: 0.12em; line-height: 2.2; }
 footer { margin-top: 60px; font-size: 11.5px; color: var(--ink-soft); letter-spacing: 0.12em; line-height: 2; }
 .hidden { display: none; }
+
+/* ---------- みんなの読み（一覧）。展示アプリの「みんなの読み」と同じ、フルページの画面 ---------- */
+#list.page {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  background:
+    radial-gradient(110% 80% at 50% 0%, rgba(255,252,244,0.92), rgba(255,252,244,0) 60%),
+    radial-gradient(90% 70% at 85% 100%, rgba(94,138,134,0.16), rgba(94,138,134,0) 55%),
+    var(--paper);
+  overflow: hidden;
+  z-index: 5;
+}
+#list.hidden { display: none; }
+.page-tree {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; opacity: 0.4; z-index: 0;
+}
+.page-head {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 16px;
+  padding: 20px 20px 12px;
+  flex: 0 0 auto;
+}
+.back-link {
+  flex: 0 0 auto; font-size: 13px; letter-spacing: 0.08em;
+  color: var(--echo-deep); text-decoration: none; white-space: nowrap;
+}
+.page-head-spacer { flex: 0 0 60px; }
+.page-title { flex: 1; text-align: center; }
+.page-title h2 { font-size: 21px; letter-spacing: 0.18em; color: var(--echo-deep); }
+.page-brand { font-size: 11px; letter-spacing: 0.12em; color: var(--ink-soft); margin-top: 4px; }
+.page-brand .brand-ring { color: var(--echo); opacity: 0.75; }
+#list-sub { font-size: 12.5px; color: var(--ink-soft); margin-top: 6px; letter-spacing: 0.05em; line-height: 1.7; }
+.list-scroll {
+  position: relative; z-index: 1;
+  flex: 1 1 auto; overflow-y: auto;
+  padding: 6px 18px 50px;
+  -webkit-overflow-scrolling: touch;
+}
+.cards-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px; text-align: left;
+  max-width: 1100px; margin: 0 auto;
+}
+
+/* ---------- QRから開いた歌のすぐ下にも、みんなの読みを並べる ---------- */
+.detail-list {
+  margin-top: 50px; padding-top: 36px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+.detail-list h3 {
+  font-size: 18px; letter-spacing: 0.18em; color: var(--echo-deep);
+}
+.detail-list-sub {
+  font-size: 12.5px; color: var(--ink-soft); margin-top: 8px;
+  letter-spacing: 0.05em; line-height: 1.7;
+}
+.detail-list .cards-grid { margin-top: 20px; }
+
+.lib-card {
+  position: relative;
+  display: flex; align-items: center; gap: 14px;
+  font-family: inherit; text-align: left; text-decoration: none; color: inherit;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px 16px;
+  transition: transform 0.12s ease;
+}
+.lib-card:active { transform: scale(0.97); }
+.lib-flower { flex: 0 0 60px; height: 60px; }
+.lib-flower svg { width: 60px; height: 60px; }
+.lib-body { flex: 1; min-width: 0; }
+.lib-name { font-size: 18px; color: var(--ink); letter-spacing: 0.05em; }
+.lib-meta { font-size: 12px; color: var(--ink-soft); margin-top: 5px; letter-spacing: 0.05em; }
+.lib-empty { text-align: center; padding: 34px 0; color: var(--ink-soft); line-height: 2; }
 </style>
 </head>
 <body>
-<main>
+
+<!-- 一覧（idなしでこのページを開いたとき）。展示アプリの「みんなの読み」と同じ、フルページの画面 -->
+<div id="list" class="page hidden">
+  <div class="page-tree" id="list-tree"></div>
+  <div class="page-head">
+    <a href="?" class="back-link">← もどる</a>
+    <div class="page-title">
+      <h2>みんなの読み</h2>
+      <p class="page-brand">ecoar<span class="brand-ring">))</span> ・ あんずよ</p>
+      <p id="list-sub">読みは、人の数だけ。</p>
+    </div>
+    <span class="page-head-spacer"></span>
+  </div>
+  <div class="list-scroll">
+    <div id="list-grid" class="cards-grid"></div>
+  </div>
+</div>
+
+<main id="detail">
   <header>
-    <h1>あんずよ</h1>
-    <p>室生犀星『抒情小曲集』より「小景異情　その六」</p>
+    <h1 class="brand-word">ecoar<span class="brand-ring">))</span></h1>
+    <p class="poem-title">あんずよ<span class="poem-source">室生犀星『抒情小曲集』より「小景異情　その六」</span></p>
   </header>
 
   <div id="status" class="status">読みをひらいています…</div>
@@ -105,11 +211,17 @@ footer { margin-top: 60px; font-size: 11.5px; color: var(--ink-soft); letter-spa
       ようやく<b>しっくりきた「読み」</b>のかたちです。<br>
       文字の高さは声の高さ、文字の伸びは声の伸び。
     </p>
+
+    <div class="detail-list">
+      <h3>みんなの読み</h3>
+      <p id="detail-list-sub" class="detail-list-sub">読みは、人の数だけ。</p>
+      <div id="detail-list-grid" class="cards-grid"></div>
+    </div>
   </section>
 
   <footer>
     詩に、正解の読みはありません。読みは、人の数だけあります。<br>
-    展示「あんずよ — 詩の読みをさがす」
+    展示「ecoar — あんずよ」
   </footer>
 </main>
 
@@ -118,6 +230,9 @@ footer { margin-top: 60px; font-size: 11.5px; color: var(--ink-soft); letter-spa
 
 // 公開ストレージ（読み出しにキーは不要）
 const STORAGE = 'https://igtbhusmfsambsoozuef.supabase.co/storage/v1/object/public/readings/';
+// 一覧の取得だけは REST 経由（publishable な anon キー。RLS で select のみ許可）
+const SUPABASE_URL = 'https://igtbhusmfsambsoozuef.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_GfYQTwmQAm9KUxas9Y66fw_OOUtVEiz';
 
 const MOODS = {
   shizuka: { pale: '#eef2f5', main: '#8fa3b8', deep: '#5d7185' },
@@ -164,9 +279,12 @@ function flowerSVG(moodId, data) {
   </svg>`;
 }
 
-// ---- 詩を「その人の読みのかたち」のまま描く ----
+// ---- 詩を「その人の読みのかたち」のまま描く（展示アプリと同じ係数） ----
 const BASE = 40, SLOT = BASE * 1.18, LINE_SPACE = BASE * 1.85, GAP_PX = 44, PITCH_PX = 56;
-const sizeFactor = (vol) => 0.62 + 0.38 * vol;
+const DUR_SX_BASE = 0.45, DUR_SX_RANGE = 0.55;
+const PITCH_SY_COEF = 0.34;
+const VOL_SIZE_BASE = 0.56, VOL_SIZE_RANGE = 0.52;
+const sizeFactor = (vol) => VOL_SIZE_BASE + VOL_SIZE_RANGE * vol;
 
 function renderPoemSVG(data) {
   const lines = POEM.map((text, li) => ({
@@ -208,11 +326,11 @@ function renderPoemSVG(data) {
       const cy = baseY - c.pitch * PITCH_PX;
       const dy = baseY - cy;
       if (Math.abs(dy) > 5) {
-        els.push(`<line x1="${cx.toFixed(1)}" y1="${baseY.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${(cy + Math.sign(dy) * BASE * 0.42).toFixed(1)}" stroke="#e08542" stroke-opacity="0.4" stroke-width="1.1"/>
-          <circle cx="${cx.toFixed(1)}" cy="${baseY.toFixed(1)}" r="2.6" fill="#e08542" fill-opacity="0.5"/>`);
+        els.push(`<line x1="${cx.toFixed(1)}" y1="${baseY.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${(cy + Math.sign(dy) * BASE * 0.42).toFixed(1)}" stroke="#d97b4f" stroke-opacity="0.4" stroke-width="1.1"/>
+          <circle cx="${cx.toFixed(1)}" cy="${baseY.toFixed(1)}" r="2.6" fill="#d97b4f" fill-opacity="0.5"/>`);
       }
-      const sx = 0.62 + 0.38 * c.dur;
-      const sy = 1 + c.pitch * 0.20;
+      const sx = DUR_SX_BASE + DUR_SX_RANGE * c.dur;
+      const sy = 1 + c.pitch * PITCH_SY_COEF;
       const size = BASE * sizeFactor(c.vol);
       els.push(`<text id="c-${li}-${ci}" transform="translate(${cx.toFixed(1)} ${cy.toFixed(1)}) scale(${sx.toFixed(3)} ${sy.toFixed(3)})" font-size="${size.toFixed(1)}" fill="#2e2a24" text-anchor="middle" dominant-baseline="central">${c.ch}</text>`);
     });
@@ -237,7 +355,7 @@ function setupPlayer(meta) {
     if (activeEl && activeEl.id !== found) { activeEl.setAttribute('fill', '#2e2a24'); activeEl = null; }
     if (found && (!activeEl || activeEl.id !== found)) {
       const el = document.getElementById(found);
-      if (el) { el.setAttribute('fill', '#c96a28'); activeEl = el; }
+      if (el) { el.setAttribute('fill', '#b85f37'); activeEl = el; }
     }
     rafId = requestAnimationFrame(tick);
   }
@@ -269,19 +387,106 @@ function setupPlayer(meta) {
   });
 }
 
+// ---- 木 — 「みんなの読み」の背景（展示アプリと同じ枝ぶりのモチーフ。画面の縦横にあわせて構図だけ変える） ----
+function treeSVG() {
+  const branches = [
+    'M 40 300 C 120 230, 160 150, 230 90',
+    'M 230 90 C 260 40, 340 10, 430 30',
+    'M 230 90 C 200 30, 130 0, 60 10',
+    'M 150 200 C 230 190, 300 160, 360 110',
+    'M 600 300 C 560 220, 540 140, 470 90',
+    'M 470 90 C 500 40, 580 10, 660 30'
+  ];
+  const blossoms = [
+    [430, 30, 'voice'], [60, 10, 'echo'], [360, 110, 'echo'],
+    [660, 30, 'voice'], [110, 60, 'voice'], [500, 60, 'echo']
+  ];
+  const dot = (x, y, kind) => {
+    const fill = kind === 'echo' ? 'var(--echo)' : 'var(--voice)';
+    return `<circle cx="${x}" cy="${y}" r="${5 + (Math.abs(x * y) % 5)}" fill="${fill}" opacity="0.5"/>`;
+  };
+  return `<svg viewBox="0 0 700 320" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <g fill="none" stroke="var(--echo-deep)" stroke-width="2.2" stroke-linecap="round" opacity="0.32">
+      ${branches.map(d => `<path d="${d}"/>`).join('')}
+    </g>
+    <g>${blossoms.map(([x, y, k]) => dot(x, y, k)).join('')}</g>
+  </svg>`;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+function formatWhen(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const now = new Date();
+  const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  if (sameDay(d, now)) return `きょう ${hm}`;
+  const yest = new Date(now); yest.setDate(now.getDate() - 1);
+  if (sameDay(d, yest)) return `きのう ${hm}`;
+  return `${d.getMonth() + 1}月${d.getDate()}日`;
+}
+
+// ---- みんなの読み（一覧）。展示アプリの「みんなの読み」と同じ見ため・データ規則 ----
+// gridId/subId を渡すことで、フルページの一覧と、QRで開いた歌のすぐ下の一覧の両方に流し込める
+async function loadListInto(gridId, subId) {
+  const gridEl = $(gridId), subEl = $(subId);
+  gridEl.innerHTML = '<div class="lib-empty">よみこんでいます…</div>';
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/readings?select=id,url,params,created_at&or=(params->>app.eq.ecoar,params->>app.eq.anzuyo)&order=created_at.desc&limit=100`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY } }
+    );
+    if (!res.ok) throw new Error('list ' + res.status);
+    const rows = await res.json();
+    const items = rows.map(row => {
+      const p = row.params || {};
+      if (p.v !== 2 || !p.data) return null;
+      return { id: row.id, name: p.name || 'ななしの読み', mood: p.mood, voice: p.voice, data: p.data, createdAt: Date.parse(row.created_at) };
+    }).filter(Boolean);
+
+    if (items.length === 0) {
+      subEl.textContent = '読みは、人の数だけ。';
+      gridEl.innerHTML = '<div class="lib-empty">まだ誰の読みもありません。<br>展示でのこされた読みが、ここに集まります。</div>';
+      return;
+    }
+    subEl.textContent = `いま、${items.length} の花がさいています。ふれると、その人の読みがひらきます。`;
+    gridEl.innerHTML = '';
+    for (const it of items) {
+      const m = MOODS[it.mood] || MOODS.attaka;
+      const a = document.createElement('a');
+      a.className = 'lib-card';
+      a.href = '?id=' + encodeURIComponent(it.id);
+      a.style.background = m.pale;
+      a.style.borderColor = m.main + '55';
+      const meta = [formatWhen(it.createdAt), VOICE_LABEL[it.voice] ? 'こえ：' + VOICE_LABEL[it.voice] : '']
+        .filter(Boolean).join('　');
+      a.innerHTML = `
+        <span class="lib-flower">${flowerSVG(it.mood, it.data)}</span>
+        <span class="lib-body">
+          <span class="lib-name">${escapeHtml(it.name)}</span>
+          <div class="lib-meta">${meta}</div>
+        </span>`;
+      gridEl.appendChild(a);
+    }
+  } catch (e) {
+    subEl.textContent = '';
+    gridEl.innerHTML = '<div class="lib-empty">とおくのライブラリに、いまは届きません。<br>しばらくしてから、もう一度開いてみてください。</div>';
+  }
+}
+
 // ---- 起動 ----
 (async () => {
   const status = $('status');
   const id = new URLSearchParams(location.search).get('id') || '';
   if (!/^[a-z0-9-]+$/.test(id)) {
-    // id なし → 作品の説明（展示で QR を読むとここに読みがひらく）
-    $('yomi').classList.remove('hidden');
-    $('flower').innerHTML = flowerSVG('attaka', null);
-    $('yomi-name').textContent = '詩の読みをさがす';
-    $('yomi-meta').textContent = '展示でのこされた読みの QR コードから、その人の読みがここにひらきます';
-    $('poem').innerHTML = renderPoemSVG(null);
-    $('play').classList.add('hidden');
+    // id なし → みんなの読み（一覧）。展示アプリの画面と同じもの
     status.classList.add('hidden');
+    $('list').classList.remove('hidden');
+    $('list-tree').innerHTML = treeSVG();
+    await loadListInto('list-grid', 'list-sub');
     return;
   }
   try {
@@ -290,6 +495,8 @@ function setupPlayer(meta) {
     const meta = await res.json();
     status.classList.add('hidden');
     $('yomi').classList.remove('hidden');
+    // QRから開いたこの歌のすぐ下にも、みんなの読みを並べる
+    loadListInto('detail-list-grid', 'detail-list-sub');
     $('flower').innerHTML = flowerSVG(meta.mood, meta.data);
     $('yomi-name').textContent = `「${meta.name || 'ななしの読み'}」`;
     const d = meta.savedAt ? new Date(meta.savedAt) : null;

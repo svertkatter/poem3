@@ -9,9 +9,15 @@
   --ink: #2e2a24;
   --ink-soft: #7a7164;
   --line: #d8ccb6;
-  --anzu: #e08542;
-  --anzu-deep: #c96a28;
-  --anzu-pale: #f6dcc4;
+  /* ecoar = こだまする・響く（声/voice が、こだま/echo になって還ってくる）。
+     --voice はいま読んでいる詩そのものの色（詩ごとに差し替え可能）、
+     --echo はブランドとして不変の、響きをあらわす色 */
+  --voice: #d97b4f;
+  --voice-deep: #b85f37;
+  --voice-pale: #f5ddc9;
+  --echo: #5e8a86;
+  --echo-deep: #3f6864;
+  --echo-pale: #dceae7;
   --shadow: rgba(62, 48, 28, 0.18);
 }
 
@@ -24,7 +30,7 @@ html, body {
   color: var(--ink);
   background:
     radial-gradient(120% 90% at 50% 0%, rgba(255, 252, 244, 0.9), rgba(255, 252, 244, 0) 60%),
-    radial-gradient(100% 80% at 85% 100%, rgba(240, 200, 160, 0.18), rgba(240, 200, 160, 0) 55%),
+    radial-gradient(100% 80% at 85% 100%, rgba(217, 123, 79, 0.16), rgba(217, 123, 79, 0) 55%),
     var(--paper);
   user-select: none;
   -webkit-user-select: none;
@@ -38,11 +44,20 @@ html, body {
   z-index: 10;
   pointer-events: none;
 }
-#topbar .title h1 {
-  font-size: 26px; font-weight: 600; letter-spacing: 0.35em;
+#topbar .title .brand-word {
+  display: inline-flex; align-items: baseline; gap: 8px;
+  font-size: 24px; font-weight: 600; letter-spacing: 0.32em;
+  color: var(--echo-deep);
 }
-#topbar .title p {
-  margin-top: 6px; font-size: 13px; letter-spacing: 0.12em; color: var(--ink-soft);
+#topbar .title .brand-ring {
+  font-size: 13px; letter-spacing: 0; color: var(--echo);
+  opacity: 0.75;
+}
+#topbar .title .poem-title {
+  margin-top: 8px; font-size: 16px; letter-spacing: 0.16em; color: var(--voice-deep);
+}
+#topbar .title .poem-source {
+  display: block; margin-top: 4px; font-size: 12px; letter-spacing: 0.1em; color: var(--ink-soft);
 }
 .top-actions { display: flex; gap: 10px; pointer-events: auto; }
 
@@ -54,9 +69,9 @@ html, body {
 #bottombar {
   position: fixed; bottom: 0; left: 0; right: 0;
   display: flex; justify-content: center; align-items: center; gap: 16px;
-  padding: 18px 24px 26px;
+  padding: 38px 24px 28px;
   z-index: 10;
-  background: linear-gradient(to top, rgba(247, 242, 232, 0.95) 55%, rgba(247, 242, 232, 0));
+  background: linear-gradient(to top, rgba(247, 242, 232, 0.95) 62%, rgba(247, 242, 232, 0));
 }
 
 .btn {
@@ -76,9 +91,9 @@ html, body {
 }
 .btn:active { transform: scale(0.96); box-shadow: 0 1px 3px var(--shadow); }
 .btn.primary {
-  background: linear-gradient(160deg, var(--anzu), var(--anzu-deep));
+  background: linear-gradient(160deg, var(--voice), var(--voice-deep));
   color: #fffaf2;
-  border-color: var(--anzu-deep);
+  border-color: var(--voice-deep);
   font-size: 22px;
   padding: 16px 46px;
 }
@@ -105,7 +120,7 @@ html, body {
 .overlay.intro {
   background:
     radial-gradient(90% 70% at 70% 20%, rgba(255, 252, 244, 0.95), rgba(255, 252, 244, 0) 70%),
-    radial-gradient(80% 70% at 20% 90%, rgba(240, 200, 160, 0.22), rgba(240, 200, 160, 0) 60%),
+    radial-gradient(80% 70% at 20% 90%, rgba(217, 123, 79, 0.20), rgba(217, 123, 79, 0) 60%),
     var(--paper);
   backdrop-filter: none;
   flex-direction: column;
@@ -115,7 +130,7 @@ html, body {
 .intro-blossom {
   position: absolute; top: 9%; right: 12%;
   width: 220px; height: 220px; border-radius: 50%;
-  background: radial-gradient(circle at 40% 40%, rgba(232, 160, 107, 0.30), rgba(232, 160, 107, 0) 65%);
+  background: radial-gradient(circle at 40% 40%, rgba(217, 123, 79, 0.28), rgba(217, 123, 79, 0) 65%);
   pointer-events: none;
 }
 .intro-wrap {
@@ -150,7 +165,7 @@ html, body {
   position: absolute; bottom: 7vh; left: 0; right: 0;
   text-align: center;
   font-size: 15px; letter-spacing: 0.3em;
-  color: var(--anzu-deep);
+  color: var(--voice-deep);
   animation: breathe 3.4s ease-in-out infinite;
 }
 @keyframes breathe {
@@ -204,12 +219,12 @@ html, body {
 .help-item svg { width: 84px; height: 84px; }
 .help-item h3 { font-size: 15px; margin-top: 6px; letter-spacing: 0.06em; }
 .help-item p { font-size: 13px; margin-top: 4px; line-height: 1.6; }
-.help-item b { color: var(--anzu-deep); }
+.help-item b { color: var(--voice-deep); }
 .hg-char { font-size: 34px; text-anchor: middle; fill: var(--ink); font-family: inherit; }
 .hg-char.small { font-size: 13px; }
-.hg-arrow { fill: var(--anzu); }
-.hg-line { stroke: var(--anzu); stroke-width: 3; stroke-linecap: round; }
-.hg-dot { fill: none; stroke: var(--anzu); stroke-width: 2.5; }
+.hg-arrow { fill: var(--voice); }
+.hg-line { stroke: var(--voice); stroke-width: 3; stroke-linecap: round; }
+.hg-dot { fill: none; stroke: var(--voice); stroke-width: 2.5; }
 
 /* ---------- 名前えらび ---------- */
 #name-candidates {
@@ -231,7 +246,7 @@ html, body {
 .modal-actions { display: flex; gap: 14px; justify-content: center; margin-top: 10px; }
 .save-progress {
   display: flex; align-items: center; justify-content: center; gap: 14px;
-  margin-top: 24px; font-size: 17px; letter-spacing: 0.12em; color: var(--anzu-deep);
+  margin-top: 24px; font-size: 17px; letter-spacing: 0.12em; color: var(--voice-deep);
 }
 .save-progress.hidden { display: none; }
 
@@ -245,17 +260,27 @@ html, body {
 
 /* ---------- みんなの読み（全画面ページ） ---------- */
 .overlay.page {
+  position: fixed;
+  inset: 0;
   background:
     radial-gradient(110% 80% at 50% 0%, rgba(255, 252, 244, 0.92), rgba(255, 252, 244, 0) 60%),
-    radial-gradient(90% 70% at 85% 100%, rgba(240, 200, 160, 0.20), rgba(240, 200, 160, 0) 55%),
+    radial-gradient(90% 70% at 85% 100%, rgba(94, 138, 134, 0.16), rgba(94, 138, 134, 0) 55%),
     var(--paper);
   backdrop-filter: none;
   flex-direction: column;
   justify-content: flex-start;
   align-items: stretch;
   z-index: 110;
+  overflow: hidden;
+}
+.page-tree {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  opacity: 0.5;
 }
 .page-head {
+  position: relative;
   display: flex; align-items: center; gap: 20px;
   padding: 22px 34px 14px;
   flex: 0 0 auto;
@@ -263,10 +288,11 @@ html, body {
 .page-head .btn { flex: 0 0 auto; font-size: 16px; padding: 12px 22px; min-height: 50px; }
 .page-head-spacer { flex: 0 0 140px; } /* タイトルを中央に保つためのダミー */
 .page-title { flex: 1; text-align: center; }
-.page-title h2 { font-size: 26px; letter-spacing: 0.2em; }
+.page-title h2 { font-size: 26px; letter-spacing: 0.2em; color: var(--echo-deep); }
 .page-title p { font-size: 13.5px; color: var(--ink-soft); margin-top: 6px; letter-spacing: 0.1em; }
 
 #library-scroll {
+  position: relative;
   flex: 1 1 auto;
   overflow-y: auto;
   padding: 10px 40px 60px;
@@ -288,7 +314,7 @@ html, body {
   touch-action: manipulation;
 }
 .lib-card:active { transform: scale(0.97); }
-.lib-card.playing { box-shadow: 0 0 0 3px var(--anzu-pale); }
+.lib-card.playing { box-shadow: 0 0 0 3px var(--voice-pale); }
 .lib-card.playing .lib-flower svg { animation: sway 1.8s ease-in-out infinite; }
 @keyframes sway {
   0%, 100% { transform: rotate(-6deg) scale(1.04); }
@@ -319,7 +345,7 @@ html, body {
   padding: 18px;
   touch-action: manipulation;
 }
-.voice-item.active { border-color: var(--anzu); background: var(--anzu-pale); }
+.voice-item.active { border-color: var(--voice); background: var(--voice-pale); }
 .voice-item:active { transform: scale(0.97); }
 .voice-item .vl { font-size: 20px; letter-spacing: 0.2em; color: var(--ink); }
 .voice-item .vd { font-size: 13.5px; color: var(--ink-soft); margin-top: 6px; letter-spacing: 0.06em; }
@@ -328,13 +354,13 @@ html, body {
 #connect-overlay { z-index: 130; } /* 扉よりも手前（再接続待ちが隠れないように） */
 .pulse-dot {
   width: 16px; height: 16px; border-radius: 50%;
-  background: var(--anzu); margin: 0 auto 22px;
+  background: var(--voice); margin: 0 auto 22px;
   animation: pulse 1.6s ease-in-out infinite;
 }
 .pulse-dot.small { width: 12px; height: 12px; margin: 0; }
 @keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(224, 133, 66, 0.5); }
-  50% { transform: scale(1.25); opacity: 0.7; box-shadow: 0 0 0 16px rgba(224, 133, 66, 0); }
+  0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(217, 123, 79, 0.5); }
+  50% { transform: scale(1.25); opacity: 0.7; box-shadow: 0 0 0 16px rgba(217, 123, 79, 0); }
 }
 
 /* ---------- トースト ---------- */

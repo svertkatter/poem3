@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -15,10 +15,8 @@ function createWindow() {
     minWidth: 900,
     minHeight: 640,
     fullscreen: kiosk,
-    kiosk: kiosk,
-    autoHideMenuBar: true,
     backgroundColor: '#f7f2e8',
-    title: 'あんずよ — 詩の読みをさがす',
+    title: 'ecoar — あんずよ',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -26,6 +24,40 @@ function createWindow() {
     }
   });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  if (kiosk) win.setMenuBarVisibility(false);
+
+  // 左上の「ファイル」メニューからフルスクリーンを切り替えられるようにする
+  // （--kiosk での起動に頼らず、展示中もあとから調整できるように）
+  const fullscreenItem = {
+    label: 'フルスクリーン',
+    type: 'checkbox',
+    checked: kiosk,
+    accelerator: 'F11',
+    click: (item) => { win.setFullScreen(item.checked); }
+  };
+  const menu = Menu.buildFromTemplate([
+    {
+      label: 'ファイル',
+      submenu: [
+        fullscreenItem,
+        { type: 'separator' },
+        { role: 'quit', label: '終了' }
+      ]
+    }
+  ]);
+  Menu.setApplicationMenu(menu);
+
+  // F11 などウィンドウ操作で直接フルスクリーンが切り替わったときも、
+  // メニューのチェック状態を合わせておく。フルスクリーン中は展示の見た目を
+  // 保つため、メニューバー自体も隠す（ウィンドウ表示にもどすと再表示される）
+  win.on('enter-full-screen', () => {
+    fullscreenItem.checked = true;
+    win.setMenuBarVisibility(false);
+  });
+  win.on('leave-full-screen', () => {
+    fullscreenItem.checked = false;
+    win.setMenuBarVisibility(true);
+  });
 }
 
 app.whenReady().then(createWindow);
@@ -131,8 +163,9 @@ ipcMain.handle('cloud:list', async () => {
   const c = loadSupabaseConfig();
   if (!c) return { ok: false, error: 'no-config' };
   try {
+    // 'ecoar' が現在のアプリ識別子。'anzuyo' は改名前（あんずよ）の旧データとの後方互換
     const res = await fetch(
-      `${c.url}/rest/v1/readings?select=id,url,params,created_at&params->>app=eq.anzuyo&order=created_at.desc&limit=100`,
+      `${c.url}/rest/v1/readings?select=id,url,params,created_at&or=(params->>app.eq.ecoar,params->>app.eq.anzuyo)&order=created_at.desc&limit=100`,
       { headers: sbHeaders() }
     );
     if (!res.ok) throw new Error('list ' + res.status);
